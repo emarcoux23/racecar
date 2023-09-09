@@ -5,6 +5,7 @@ import socket
 import threading
 import struct
 import sys
+import time
 
 from tf.transformations import euler_from_quaternion
 
@@ -32,8 +33,8 @@ class ROSMonitor:
         self.pos_broadcast_port  = rospy.get_param("pos_broadcast_port", 65431)
 
         # Thread for RemoteRequest handling:
-        print("Je suis ici")
         self.rr_thread = threading.Thread(target=self.rr_loop)
+        self.rr_thread.setDaemon(True)
         self.rr_thread.start()
 
         self.pb_init()
@@ -50,7 +51,7 @@ class ROSMonitor:
             self.obstacle = False                  
 
     def pb_init(self):
-        print("pb_loop enter")
+        # print("pb_loop enter")
         self.server_address = ("127.0.0.255", self.pos_broadcast_port)
 
         self.pb_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
@@ -61,27 +62,62 @@ class ROSMonitor:
     def pb_send(self, some_arg):
 
         try:
-            self.pos_x = 1.23
-            self.pos_y = 2.34
-            self.pos_yaw = 3.45
-            self.pos_x_bin = struct.pack('!f', self.pos_x)
-            self.pos_y_bin = struct.pack('!f', self.pos_y)
-            self.pos_yaw_bin = struct.pack('!f', self.pos_yaw)
-            self.id_bin = struct.pack('!I', self.id)
+            pos_x_bin = struct.pack('!f', self.pos_x)
+            pos_y_bin = struct.pack('!f', self.pos_y)
+            pos_yaw_bin = struct.pack('!f', self.pos_yaw)
+            id_bin = struct.pack('!I', self.id)
 
-            self.pos_send = self.pos_x_bin + self.pos_y_bin + self.pos_yaw_bin + self.id_bin
+            self.pos_send = pos_x_bin + pos_y_bin + pos_yaw_bin + id_bin
             self.pb_socket.sendto(self.pos_send, self.server_address)
 
-            rospy.loginfo("Sending to " + self.server_address[0])
+            #rospy.loginfo("Sending to " + self.server_address[0])
 
         except Exception as e:
             rospy.logerr(e)
 
-    def rr_loop(self, some_arg):
-        self.rr_socket.send("RPOS") #TODO modifier
+    
+    def rr_sendback(self, cmd_msg, rr_socket:socket.socket):
+        if cmd_msg == "RPOS":
+            pos_x_bin = struct.pack('!f', self.pos_x)
+            pos_y_bin = struct.pack('!f', self.pos_y)
+            pos_yaw_bin = struct.pack('!fxxxx', self.pos_yaw)
+            pos_send = pos_x_bin + pos_y_bin + pos_yaw_bin
+            rr_socket.send(pos_send)
+            print("Je renvoie: " + str(pos_send))
+        elif cmd_msg == "OBSF":
+            rr_socket.send(struct.pack('!Ixxxxxxxxxxxx', self.obstacle))
+            print("Je renvoie: " + str(bool(self.obstacle)))
+        elif cmd_msg == "RBID":
+            rr_socket.send(struct.pack('!Ixxxxxxxxxxxx', self.id))
+            print("Je renvoie: " + str(hex(self.id)))
+        else:
+            rospy.logfatal("How did we get here?")
+
+        print("rr_feedback exit")
+    
+    def rr_loop(self):
+        self.rr_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        self.rr_socket.bind(('127.0.0.1', self.remote_request_port))
+        self.rr_socket.listen()
+
+        while True:
+            try:
+                temp_socket, adress = self.rr_socket.accept()              
+
+                with temp_socket:
+                    data = temp_socket.recv(4)
+                    cmd_msg = data.decode()
+                    print("J'ai reçu : " + cmd_msg)
+                    self.rr_sendback(cmd_msg, temp_socket)
+                    temp_socket.close()
+            except:
+                None
+
 
 if __name__=="__main__":
     rospy.init_node("ros_monitor")
     node = ROSMonitor()
     rospy.spin()
     node.pb_socket.close()
+    node.rr_socket.close()
+    print("Sockets closed")
