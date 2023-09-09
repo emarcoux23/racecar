@@ -51,7 +51,7 @@ class ROSMonitor:
 
     def pb_init(self):
         print("pb_loop enter")
-        self.server_address = ("192.168.10.255", self.pos_broadcast_port)
+        self.server_address = ("127.0.0.255", self.pos_broadcast_port)
 
         self.pb_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         self.pb_socket.setsockopt(socket.SOL_SOCKET, socket.SO_BROADCAST, 1)
