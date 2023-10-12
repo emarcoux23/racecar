@@ -25,100 +25,175 @@ Client-side:
     <title>Laboratoire S5-GIF250</title>
 </head>
 
-<body>
-    
-  <!-- Menu BEGIN-->
-  <div class="collapse" id="navbarToggleExternalContent">
-    <div class="bg-dark p-4">
-      <h6 class="text-white h4">Config</h6>
+<body onload="connectROS()">
+    <!-- Menu BEGIN-->
+    <div class="collapse" id="navbarToggleExternalContent">
+        <div class="bg-dark p-4">
+            <h6 class="text-white h4">Config</h6>
+            <h6 class="text-white">ROS master IP:</h6>
+            <input type="" name="ROS_IP_Address" id="ipaddress">
+            <div style="padding-top: 10px;">
+                <button class="button-white" onclick="connectROS()">Connecter</button>
+            </div>
+        </div>
     </div>
-  </div>
 
-  <nav class="navbar navbar-dark bg-dark">
-    <div>
-      <button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#navbarToggleExternalContent">
-        <span class="navbar-toggler-icon"></span>
-      </button>
+    <nav class="navbar navbar-dark bg-dark">
+        <div>
+            <div class="container-fluid">
+                <div class="row">
+                    <div class="col">
+                        <button class="navbar-toggler" type="button" data-toggle="collapse"
+                            data-target="#navbarToggleExternalContent">
+                            <span class="navbar-toggler-icon"></span>
+                        </button>
+                    </div>
+                    <div class="col">
+                        <h6 class="text-white h2">Racecar</h6>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </nav>
+    <!-- Menu END-->
+
+    <!-- Main layout BEGIN-->
+    <div class="container-fluid">
+        <div class="col-sb">
+            <div class="col">
+                <h6 class="text-black h1" style="font-weight: bold">Statut</h6>
+                <textarea id='output' disabled rows="5" cols="30"></textarea>
+                <div>
+                    <button class="button-blue" value="Clear" onclick="javascript:eraseText();">Effacer</button>
+                </div>
+            </div>
+
+            <div class="col">
+                <h6 class="text-black h1" style="font-weight: bold">Contrôle</h6>
+                <button class="button-blue" value="Clear"
+                    onclick="javascript:addText('output', 'Avancer!');">Avancer</button>
+                <button class="button-blue" value="Clear"
+                    onclick="javascript:addText('output', 'Arrêter!');">Arrêter</button>
+            </div>
+        </div>
+        <div class="col">
+            <h6 class="text-black h1" style="font-weight: bold">Caméra</h6>
+            <img class="img-thumbnail" id="camRacecar"
+                src="http://localhost:8080/stream?topic=/racecar/raspicam_node/image&type=ros_compressed"
+                alt="girl Pertiglance 7" width="480" height="auto">
+        </div>
     </div>
-  </nav>
-  <!-- Menu END-->
+    </div>
+    <!-- Main layout END-->
 
-  <!-- Main layout BEGIN-->
-  <div class="container-fluid">
+    <!-- JavaScript, import frameworks -->
+    <!-- jQuery first, then Popper.js, then Bootstrap JS -->
+    <script src="js/jquery-3.3.1.slim.min.js"></script>
+    <script src="js/popper.min.js"></script>
+    <script src="js/bootstrap.min.js"></script>
+    <script src="js/roslib.min.js"></script> <!-- rosbridge -->
 
-  </div>
-  <!-- Main layout END-->
-  
-  <!-- JavaScript, import frameworks -->
-  <!-- jQuery first, then Popper.js, then Bootstrap JS -->
-  <script src="js/jquery-3.3.1.slim.min.js"></script>
-  <script src="js/popper.min.js"></script>
-  <script src="js/bootstrap.min.js"></script>
-  <script src="js/roslib.min.js"></script> <!-- rosbridge -->
+    <!-- Custom scripts -->
+    <script>
+        // Define some global variables
+        var rbServer = null;
+        var cmdVelTopic = null;
 
-  <!-- Custom scripts -->
-  <script>
-      // Define some global variables
-      var rbServer = null;
-      var cmdVelTopic = null;
+        var cmd_x = 0.0;
+        var cmd_y = 0.0;
 
-      //Some initializations after the page has been shown
-      $(document).ready(function(){
-        document.getElementById("log").value = 'Default text\n'
-      });
+        function eraseText() {
+            document.getElementById("output").value = "";
+        }
 
-      // Define some functions
-      function connectROS() {
-        // This function connects to the rosbridge server
-
-	    rbServer = new ROSLIB.Ros({
-          // Assuming ros server IP is 10.42.0.1
-	      url : 'ws://10.42.0.1:9090'
-	    });
-
-        rbServer.on('connection', function(){
-            console.log('Connected to websocket server.');
-
-            // These lines create a topic object as defined by roslibjs
-            cmdVelTopic = new ROSLIB.Topic({
-                ros : rbServer,
-                name : '/racecar/cmd_vel_abtr_2',
-                messageType : 'geometry_msgs/Twist'
-            });
-	    });
-
-        rbServer.on('error', function(error) {
-          console.log('Error connecting to websocket server: ', error);
-	    });
-
-	    rbServer.on('close', function() {
-          console.log('Connection to websocket server closed.');
-	    });
-      }
-
-      // These lines create a message that conforms to the structure of the Twist defined in our ROS installation
-      // It initalizes all properties to zero. They will be set to appropriate values before we publish this message.
-      var twist = new ROSLIB.Message({
-           linear : {
-                x : 0.0,
-                y : 0.0,
-                z : 0.0
-            },
-            angular : {
-                x : 0.0,
-                y : 0.0,
-                z : 0.0
+        function sendCmd(elId, cmd) {
+            if (cmd == 'avant')
+            {
+                cmd_x = 0.0;
             }
-      });
+            else if (cmd == 'Arret')
+            {
+                cmd == 'Arret';
+                cmd_x = 0.0
+                cmd_y = 0.0
+                cmd_z = 0.0
+            }
+        }
 
-      //Publishing loop cmd_vel at 5 Hz
-      setInterval(function(){
-           if(cmdVelTopic != null)
-           {
-             cmdVelTopic.publish(twist);
-           }
-      }, 200);
+        function addText(elId, text) {
+            let elem = document.getElementById(elId);
+            elem.value += (text + "\n");
+            elem.scrollTop = elem.scrollHeight;
+        }
 
-  </script>
+        //Some initializations after the page has been shown
+        $(document).ready(function () {
+            document.getElementById("log").value = 'Default text\n'
+        });
+
+        // Define some functions
+        function connectROS(input) {
+            // This function connects to the rosbridge server
+            let url = window.location.href;
+            let ip_regex = /(?<=ipAdd=)[^&]+/;
+            let ipadd = url.match(ip_regex)[0];
+
+            addText('output', 'Trying to connect...');
+
+            rbServer = new ROSLIB.Ros({
+                // Assuming ros server IP is 10.42.0.1
+                // url: 'ws://10.42.0.1:9090'
+                url: 'ws://' + ipadd + ':9090'
+            });
+
+            rbServer.on('connection', function () {
+                console.log('Connected to websocket server.');
+                addText('output', 'Connected!');
+
+                // These lines create a topic object as defined by roslibjs
+                cmdVelTopic = new ROSLIB.Topic({
+                    ros: rbServer,
+                    name: '/racecar/cmd_vel_abtr_2',
+                    messageType: 'geometry_msgs/Twist'
+                });
+            });
+
+            rbServer.on('error', function (error) {
+                addText('output', 'Connexion error!');
+                console.log('Error connecting to websocket server: ', error);
+            });
+
+            rbServer.on('close', function () {
+                addText('output', 'Connexion closed!');
+                console.log('Connection to websocket server closed.');
+            });
+        }
+
+        // These lines create a message that conforms to the structure of the Twist defined in our ROS installation
+        // It initalizes all properties to zero. They will be set to appropriate values before we publish this message.
+        var twist = new ROSLIB.Message({
+            linear: {
+                x: cmd_x,
+                y: cmd_y,
+                z: 0.0
+            },
+            angular: {
+                x: 0.0,
+                y: 0.0,
+                z: 0.0
+            }
+        });
+
+        //Publishing loop cmd_vel at 5 Hz
+        setInterval(function () {
+            if (cmdVelTopic != null) {
+                cmdVelTopic.publish(twist);
+            }
+            // document.getElementById("camRacecar").
+
+        }, 200);
+
+    </script>
 </body>
+
 </html>
