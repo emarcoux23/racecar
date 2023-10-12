@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <!-- Bootstrap CSS -->
+    <link rel="stylesheet" href="css/bootstrap.min.css">
+    <link rel="stylesheet" href="css/dashboard.css">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+</head>
+
+<body>
+
+    <div class="container">
+        <form onsubmit="return validateForm(); " action="index.html" method="get">
+            <div class="row">
+
+                <div class="col">
+                    <a class="fb btn">
+                        <div class="col" style="width: 115px;">
+                            <img src="logo.png" width="115" height="auto"> </img>
+                        </div>
+                        <div class="col center-block">
+                            <h4 style="font-size: larger; color: white;"> Racecar #7 </h6>
+                        </div>
+                    </a>
+                </div>
+
+                <div class="col">
+
+                    <input type="text" id="id_username" name="username" placeholder="Enter your name" required>
+                    <input type="ipAdd" id="id_ipAdd" name="ipAdd" placeholder="Enter the racecar's IP adress" required>
+                    <input type="submit" value="Login">
+                </div>
+
+            </div>
+        </form>
+    </div>
+
+    <!-- JavaScript, import frameworks -->
+    <!-- jQuery first, then Popper.js, then Bootstrap JS -->
+    <script src="js/jquery-3.3.1.slim.min.js"></script>
+    <script src="js/popper.min.js"></script>
+    <script src="js/bootstrap.min.js"></script>
+    <script src="js/roslib.min.js"></script> <!-- rosbridge -->
+
+    <!-- Custom scripts -->
+    <script>
+
+        function validateForm() {
+            let input_username = document.getElementById("id_username");
+            let input_ipAdd = document.getElementById("id_ipAdd");
+
+            let ipformat = /^(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)$/;
+
+            if (!input_ipAdd.value.match(ipformat)) {
+                alert('\"' + input_ipAdd.value + '\"' + " is an Invalid IP address!")
+                return false;
+            }
+
+            if (input_username.value == "" || input_ipAdd.value == "") {
+                alert("Ensure you input a value in both fields!");
+                return false;
+            }
+
+            input_username.value.text = "";
+            input_ipAdd.value.text = "";
+            return true;
+        };
+    </script>
+
+</body>
+
+</html>
