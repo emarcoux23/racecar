@@ -25,65 +25,65 @@ Client-side:
     <title>Laboratoire S5-GIF250</title>
 </head>
 
-<body onload="connectROS()">
+<body>
     <!-- Menu BEGIN-->
-    <div class="collapse" id="navbarToggleExternalContent">
-        <div class="bg-dark p-4">
-            <h6 class="text-white h4">Config</h6>
-            <h6 class="text-white">ROS master IP:</h6>
-            <input type="" name="ROS_IP_Address" id="ipaddress">
-            <div style="padding-top: 10px;">
-                <button class="button-white" onclick="connectROS()">Connecter</button>
+    <nav class="navbar navbar-dark fb">
+        <div class="container-fluid">
+            <div class="col-sb">
+                <h6 class="text-white h2">Racecar</h6>
             </div>
-        </div>
-    </div>
-
-    <nav class="navbar navbar-dark bg-dark">
-        <div>
-            <div class="container-fluid">
+            <div class="col">
                 <div class="row">
-                    <div class="col">
-                        <button class="navbar-toggler" type="button" data-toggle="collapse"
-                            data-target="#navbarToggleExternalContent">
-                            <span class="navbar-toggler-icon"></span>
-                        </button>
-                    </div>
-                    <div class="col">
-                        <h6 class="text-white h2">Racecar</h6>
-                    </div>
+                    <h class="h6">User: </h>
+                    <h class="h6" id="fieldUser"></h>
+                </div>
+                <div class="row">
+                    <h class="h6">IP Address: </h>
+                    <h class="h6" id="fieldIp"></h>
                 </div>
             </div>
+            <div class="col-sb">
+                <form action="connection_page.html">
+                    <input class="button_x" type="submit" value="X">
+                </form>
+            </div>
+
         </div>
     </nav>
     <!-- Menu END-->
 
     <!-- Main layout BEGIN-->
     <div class="container-fluid">
-        <div class="col-sb">
+        <div class="row">
             <div class="col">
-                <h6 class="text-black h1" style="font-weight: bold">Statut</h6>
+                <h6 class="text-black h1" style="font-weight: bold">Statut
+                    <img src="img/loading.gif" id="connection_logo" width="30px" style="padding: px;">
+                </h6>
                 <textarea id='output' disabled rows="5" cols="30"></textarea>
                 <div>
-                    <button class="button-blue" value="Clear" onclick="javascript:eraseText();">Effacer</button>
+                    <button class="button-blue fb" value="Clear" onclick="javascript:eraseText();">Effacer</button>
                 </div>
             </div>
-
             <div class="col">
-                <h6 class="text-black h1" style="font-weight: bold">Contrôle</h6>
-                <button class="button-blue" value="Clear"
-                    onclick="javascript:addText('output', 'Avancer!');">Avancer</button>
-                <button class="button-blue" value="Clear"
-                    onclick="javascript:addText('output', 'Arrêter!');">Arrêter</button>
+                <h6 class="text-black h1" style="font-weight: bold">Caméra</h6>
+                <img class="img-thumbnail" id="camRacecar"
+                    src="http://localhost:8080/stream?topic=/racecar/raspicam_node/image&type=ros_compressed"
+                    alt="girl Pertiglance 7" width="480" height="auto">
             </div>
         </div>
-        <div class="col">
-            <h6 class="text-black h1" style="font-weight: bold">Caméra</h6>
-            <img class="img-thumbnail" id="camRacecar"
-                src="http://localhost:8080/stream?topic=/racecar/raspicam_node/image&type=ros_compressed"
-                alt="girl Pertiglance 7" width="480" height="auto">
+        <div class="row">
+            <div class="col">
+                <h6 class="text-black h1" style="font-weight: bold">Contrôle
+                    <img alt="stop_button_img" src="img/emergency_button.png"
+                        style="height: 85px; width: auto; cursor: pointer;" id="stop_button"
+                        onclick="switchStopButtonImage()">
+                </h6>
+
+                <canvas id="canvas" name="game" onclick="{updateCmd(0.0, 0.0); addText('output', 'cmd');}"></canvas>
+            </div>
         </div>
     </div>
-    </div>
+
     <!-- Main layout END-->
 
     <!-- JavaScript, import frameworks -->
@@ -106,29 +106,27 @@ Client-side:
             document.getElementById("output").value = "";
         }
 
-        function sendCmd(elId, cmd) {
-            if (cmd == 'avant')
-            {
-                cmd_x = 0.0;
-            }
-            else if (cmd == 'Arret')
-            {
-                cmd == 'Arret';
-                cmd_x = 0.0
-                cmd_y = 0.0
-                cmd_z = 0.0
-            }
-        }
-
         function addText(elId, text) {
             let elem = document.getElementById(elId);
-            elem.value += (text + "\n");
+
+            if (text == 'cmd') {
+                elem.value += ('x: ' + cmd_x.toFixed(2) + '\ty:' + cmd_y.toFixed(2) + "\n");
+            }
+            else {
+                elem.value += (text + "\n");
+            }
+
             elem.scrollTop = elem.scrollHeight;
+        }
+
+        function updateCmd(x_relative, y_relative) {
+            cmd_x = x_relative / 75.0;
+            cmd_y = y_relative / 75.0;
         }
 
         //Some initializations after the page has been shown
         $(document).ready(function () {
-            document.getElementById("log").value = 'Default text\n'
+            connectROS();
         });
 
         // Define some functions
@@ -136,7 +134,25 @@ Client-side:
             // This function connects to the rosbridge server
             let url = window.location.href;
             let ip_regex = /(?<=ipAdd=)[^&]+/;
-            let ipadd = url.match(ip_regex)[0];
+            let user_regex = /(?<=username=)[^&]+/;
+            let ipadd;
+
+
+            let ip_match = url.match(ip_regex);
+            let user_match = url.match(user_regex);
+
+            if (ip_match && user_match) {
+                ipadd = ip_match[0];
+                document.getElementById("fieldIp").textContent = ipadd;
+                document.getElementById("fieldUser").textContent = user_match[0];
+            }
+            else {
+                addText('output', 'Connexion error!');
+                console.log('Error connecting to websocket server');
+                document.getElementById("connection_logo").src = "img/connection_failed.png";
+                return;
+            }
+
 
             addText('output', 'Trying to connect...');
 
@@ -149,6 +165,7 @@ Client-side:
             rbServer.on('connection', function () {
                 console.log('Connected to websocket server.');
                 addText('output', 'Connected!');
+                document.getElementById("connection_logo").src = "img/connection_established.png";
 
                 // These lines create a topic object as defined by roslibjs
                 cmdVelTopic = new ROSLIB.Topic({
@@ -161,11 +178,13 @@ Client-side:
             rbServer.on('error', function (error) {
                 addText('output', 'Connexion error!');
                 console.log('Error connecting to websocket server: ', error);
+                document.getElementById("connection_logo").src = "img/connection_failed.png";
             });
 
             rbServer.on('close', function () {
                 addText('output', 'Connexion closed!');
                 console.log('Connection to websocket server closed.');
+                document.getElementById("connection_logo").src = "img/connection_failed.png";
             });
         }
 
@@ -187,11 +206,165 @@ Client-side:
         //Publishing loop cmd_vel at 5 Hz
         setInterval(function () {
             if (cmdVelTopic != null) {
+                twist.linear.x = cmd_x;
+                twist.linear.y = cmd_y;
                 cmdVelTopic.publish(twist);
             }
             // document.getElementById("camRacecar").
 
-        }, 200);
+        }, 5);
+
+        let flag_SB = 0;
+
+        function switchStopButtonImage() {
+            if (flag_SB) {
+                document.getElementById("stop_button").src = "img/emergency_button.png";
+                addText('output', 'Stop button released!');
+            } else {
+                document.getElementById("stop_button").src = "img/emergency_button.gif";
+                addText('output', 'Stop button pushed!');
+            }
+            flag_SB = !flag_SB;
+        }
+
+        function disableScroll() {
+            let scrollXoffset = window.pageXOffset();
+            let scrollYoffset = window.pageYOffset();
+            window.onscroll = function () { window.scrollTo(scrollXoffset, scrollYoffset) };
+        }
+
+        function enableScroll() {
+            window.onscroll = function () { };
+        }
+
+        var canvas, ctx;
+
+        window.addEventListener('load', () => {
+
+            canvas = document.getElementById('canvas');
+            ctx = canvas.getContext('2d');
+            resize();
+
+            document.addEventListener('mousedown', startDrawing);
+            document.addEventListener('mouseup', stopDrawing);
+            document.addEventListener('mousemove', Draw);
+
+            document.addEventListener('touchstart', startDrawing);
+            document.addEventListener('touchend', stopDrawing);
+            document.addEventListener('touchcancel', stopDrawing);
+            document.addEventListener('touchmove', Draw);
+            window.addEventListener('resize', resize);
+        });
+
+
+
+
+        var width, height, radius, x_orig, y_orig;
+        function resize() {
+            radius = 75;
+            width = radius * 4;
+            height = radius * 6.5;
+            ctx.canvas.width = window.innerWidth / 2;
+            ctx.canvas.height = height;
+            background();
+            joystick(width / 2, height / 3);
+        }
+
+        function background() {
+            x_orig = radius * 2;
+            y_orig = height / 3;
+
+            ctx.beginPath();
+            ctx.arc(x_orig, y_orig, radius + 20, 0, Math.PI * 2, true);
+            ctx.fillStyle = '#ECE5E5';
+            ctx.fill();
+        }
+
+        function joystick(width, height) {
+            ctx.beginPath();
+            ctx.arc(width, height, radius, 0, Math.PI * 2, true);
+            ctx.fillStyle = '#F08080';
+            ctx.fill();
+            ctx.strokeStyle = '#F6ABAB';
+            ctx.lineWidth = 8;
+            ctx.stroke();
+        }
+
+        let coord = { x: 0, y: 0 };
+        let paint = false;
+
+        function getPosition(event) {
+            var mouse_x = event.clientX || event.touches[0].clientX;
+            var mouse_y = event.clientY || event.touches[0].clientY;
+            coord.x = mouse_x - canvas.offsetLeft;
+            coord.y = mouse_y - canvas.offsetTop - 485;
+        }
+
+        function is_it_in_the_circle() {
+            var current_radius = Math.sqrt(Math.pow(coord.x - x_orig, 2) + Math.pow(coord.y - y_orig, 2));
+            if (radius >= current_radius) return true
+            else return false
+        }
+
+
+        function startDrawing(event) {
+            paint = true;
+            getPosition(event);
+            if (is_it_in_the_circle()) {
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+                background();
+                joystick(coord.x, coord.y);
+                Draw();
+            }
+        }
+
+
+        function stopDrawing() {
+            paint = false;
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            background();
+            joystick(width / 2, height / 3);
+        }
+
+        function Draw(event) {
+
+            if (paint) {
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+                background();
+                var angle_in_degrees, x, y, speed;
+                var angle = Math.atan2((coord.y - y_orig), (coord.x - x_orig));
+
+                if (Math.sign(angle) == -1) {
+                    angle_in_degrees = Math.round(-angle * 180 / Math.PI);
+                }
+                else {
+                    angle_in_degrees = Math.round(360 - angle * 180 / Math.PI);
+                }
+
+
+                if (is_it_in_the_circle()) {
+                    joystick(coord.x, coord.y);
+                    x = coord.x;
+                    y = coord.y;
+                }
+                else {
+                    x = radius * Math.cos(angle) + x_orig;
+                    y = radius * Math.sin(angle) + y_orig;
+                    joystick(x, y);
+                }
+
+                getPosition(event);
+
+                var speed = Math.round(100 * Math.sqrt(Math.pow(x - x_orig, 2) + Math.pow(y - y_orig, 2)) / radius);
+
+                var x_relative = Math.round(x - x_orig);
+                var y_relative = Math.round(y - y_orig);
+
+                updateCmd(-y_relative, x_relative);
+
+                addText('output', 'cmd');
+            }
+        }
 
     </script>
 </body>
