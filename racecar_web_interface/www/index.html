@@ -1,17 +1,5 @@
 <!doctype html>
 <html>
-<!-- 
-==References==
-Server-side:
-* http://docs.ros.org/indigo/api/roswww/html/
-* http://wiki.ros.org/web_video_server
-* http://wiki.ros.org/rosbridge_suite/Tutorials/RunningRosbridge
-
-Client-side:
-* http://wiki.ros.org/roslibjs/Tutorials/BasicRosFunctionality
-* https://getbootstrap.com/docs/4.0/getting-started/introduction/
-* https://getbootstrap.com/docs/4.0/layout/grid/
--->
 
 <head>
     <!-- Required meta tags -->
@@ -23,6 +11,11 @@ Client-side:
     <link rel="stylesheet" href="css/dashboard.css">
 
     <title>Laboratoire S5-GIF250</title>
+    <!---<style>
+        .sliderbutton {
+            display: none;
+        }
+    </style>--->
 </head>
 
 <body>
@@ -61,27 +54,48 @@ Client-side:
                 </h6>
                 <textarea id='output' disabled rows="5" cols="30"></textarea>
                 <div>
-                    <button class="button-blue fb" value="Clear" onclick="javascript:eraseText();">Effacer</button>
+                    <button class="button-blue fb" value="Clear" onclick="javascript:eraseText();">Erase</button>
                 </div>
             </div>
             <div class="col">
-                <h6 class="text-black h1" style="font-weight: bold">Caméra</h6>
+                <h6 class="text-black h1" style="font-weight: bold">Camera</h6>
                 <img class="img-thumbnail" id="camRacecar"
                     src="http://localhost:8080/stream?topic=/racecar/raspicam_node/image&type=ros_compressed"
-                    alt="girl Pertiglance 7" width="480" height="auto">
+                    alt="Camera not working" width="480" height="auto">
             </div>
         </div>
         <div class="row">
             <div class="col">
-                <h6 class="text-black h1" style="font-weight: bold">Contrôle
+                <h6 class="text-black h1" style="font-weight: bold">Control
                     <img alt="stop_button_img" src="img/emergency_button.png"
                         style="height: 85px; width: auto; cursor: pointer;" id="stop_button"
                         onclick="switchStopButtonImage()">
                 </h6>
-
-                <canvas id="canvas" name="game" onclick="{updateCmd(0.0, 0.0); addText('output', 'cmd');}"></canvas>
+                <!---<label class="switch">
+                        <input type="checkbox" checked>
+                        <span class="slider round" onclick="toggleSlider()"> </span>
+                    </label>
+                <canvas class="joystick" id="canvas" name="game"
+                    onclick="{updateCmd(0.0, 0.0); addText('output', 'cmd');}"></canvas>
+                <div class="sliderbutton">--->
+                <button class="button_updown" onmousedown="Dpad_up()" onmouseup="Dpad_up_unlatch()">
+                    <div class="triangle-up"></div>
+                </button>
+                <div></div>
+                <button onmousedown="Dpad_left()" onmouseup="Dpad_left_unlatch()">
+                    <div class="triangle-left"></div>
+                </button>
+                <button class="button_right" onmousedown="Dpad_right()" onmouseup="Dpad_right_unlatch()">
+                    <div class="triangle-right"></div>
+                </button>
+                <div></div>
+                <button class="button_updown" onmousedown="Dpad_down()" onmouseup="Dpad_down_unlatch()">
+                    <div class="triangle-down"></div>
+                </button>
             </div>
         </div>
+
+    </div>
     </div>
 
     <!-- Main layout END-->
@@ -137,7 +151,6 @@ Client-side:
             let user_regex = /(?<=username=)[^&]+/;
             let ipadd;
 
-
             let ip_match = url.match(ip_regex);
             let user_match = url.match(user_regex);
 
@@ -170,7 +183,7 @@ Client-side:
                 // These lines create a topic object as defined by roslibjs
                 cmdVelTopic = new ROSLIB.Topic({
                     ros: rbServer,
-                    name: '/racecar/cmd_vel_abtr_2',
+                    name: '/racecar/cmd_vel',
                     messageType: 'geometry_msgs/Twist'
                 });
             });
@@ -192,8 +205,8 @@ Client-side:
         // It initalizes all properties to zero. They will be set to appropriate values before we publish this message.
         var twist = new ROSLIB.Message({
             linear: {
-                x: cmd_x,
-                y: cmd_y,
+                x: 0.0,
+                y: 0.0,
                 z: 0.0
             },
             angular: {
@@ -207,15 +220,13 @@ Client-side:
         setInterval(function () {
             if (cmdVelTopic != null) {
                 twist.linear.x = cmd_x;
-                twist.linear.y = cmd_y;
+                twist.angular.z = cmd_y;
                 cmdVelTopic.publish(twist);
             }
-            // document.getElementById("camRacecar").
 
-        }, 5);
+        }, 200);
 
         let flag_SB = 0;
-
         function switchStopButtonImage() {
             if (flag_SB) {
                 document.getElementById("stop_button").src = "img/emergency_button.png";
@@ -237,8 +248,7 @@ Client-side:
             window.onscroll = function () { };
         }
 
-        var canvas, ctx;
-
+        /*var canvas, ctx;
         window.addEventListener('load', () => {
 
             canvas = document.getElementById('canvas');
@@ -255,9 +265,6 @@ Client-side:
             document.addEventListener('touchmove', Draw);
             window.addEventListener('resize', resize);
         });
-
-
-
 
         var width, height, radius, x_orig, y_orig;
         function resize() {
@@ -276,16 +283,16 @@ Client-side:
 
             ctx.beginPath();
             ctx.arc(x_orig, y_orig, radius + 20, 0, Math.PI * 2, true);
-            ctx.fillStyle = '#ECE5E5';
+            ctx.fillStyle = '#CAD6F0';
             ctx.fill();
         }
 
         function joystick(width, height) {
             ctx.beginPath();
             ctx.arc(width, height, radius, 0, Math.PI * 2, true);
-            ctx.fillStyle = '#F08080';
+            ctx.fillStyle = '#3B5998';
             ctx.fill();
-            ctx.strokeStyle = '#F6ABAB';
+            ctx.strokeStyle = '#5478C2';
             ctx.lineWidth = 8;
             ctx.stroke();
         }
@@ -318,7 +325,6 @@ Client-side:
             }
         }
 
-
         function stopDrawing() {
             paint = false;
             ctx.clearRect(0, 0, canvas.width, canvas.height);
@@ -341,7 +347,6 @@ Client-side:
                     angle_in_degrees = Math.round(360 - angle * 180 / Math.PI);
                 }
 
-
                 if (is_it_in_the_circle()) {
                     joystick(coord.x, coord.y);
                     x = coord.x;
@@ -354,16 +359,111 @@ Client-side:
                 }
 
                 getPosition(event);
-
                 var speed = Math.round(100 * Math.sqrt(Math.pow(x - x_orig, 2) + Math.pow(y - y_orig, 2)) / radius);
-
                 var x_relative = Math.round(x - x_orig);
                 var y_relative = Math.round(y - y_orig);
 
                 updateCmd(-y_relative, x_relative);
-
                 addText('output', 'cmd');
             }
+        }
+*/
+
+        const delay = 100;
+
+        let dpadup_pressed = false;
+        function Dpad_up() {
+            dpadup_pressed = true;
+            const up_repeat = () => {
+                if (dpadup_pressed) {
+                    setTimeout(up_repeat, delay);
+                    cmd_x = 1.0;
+                    addText('output', 'cmd');
+                    console.log("Dpad_up_Pressed");
+                }
+            }
+            up_repeat();
+        }
+        function Dpad_up_unlatch() {
+            dpadup_pressed = false;
+            cmd_x = 0.0;
+            addText('output', 'cmd');
+            console.log("Dpad_up_NOT_ressed")
+        }
+
+        let dpaddown_pressed = false;
+        function Dpad_down() {
+            dpaddown_pressed = true;
+            const down_repeat = () => {
+                if (dpaddown_pressed) {
+                    setTimeout(down_repeat, delay);
+                    cmd_x = -1.0;
+                    addText('output', 'cmd');
+                    console.log("Dpad_down_Pressed");
+                }
+            }
+            down_repeat();
+        }
+        function Dpad_down_unlatch() {
+            dpaddown_pressed = false;
+            cmd_x = 0.0;
+            addText('output', 'cmd');
+            console.log("Dpad_down_NOT_ressed")
+        }
+
+        let dpadright_pressed = false;
+        function Dpad_right() {
+            dpadright_pressed = true;
+            const right_repeat = () => {
+                if (dpadright_pressed) {
+                    setTimeout(right_repeat, delay);
+                    cmd_y = 1.0;
+                    addText('output', 'cmd');
+                    console.log("Dpad_right Pressed");
+                }
+            }
+            right_repeat();
+        }
+        function Dpad_right_unlatch() {
+            dpadright_pressed = false;
+            cmd_y = 0.0;
+            addText('output', 'cmd');
+            console.log("Dpad_right_NOT_ressed")
+        }
+
+        let dpadleft_pressed = false;
+        function Dpad_left() {
+            dpadleft_pressed = true;
+            const left_repeat = () => {
+                if (dpadleft_pressed) {
+                    setTimeout(left_repeat, delay);
+                    cmd_y = -1.0;
+                    addText('output', 'cmd');
+                    console.log("Dpad_left Pressed");
+                }
+            }
+            left_repeat();
+        }
+        function Dpad_left_unlatch() {
+            dpadleft_pressed = false;
+            cmd_y = 0.0;
+            addText('output', 'cmd');
+
+            console.log("Dpad_left_NOT_ressed")
+        }
+
+        let flag_slider = 0;
+        function toggleSlider() {
+            if (flag_slider) {
+                document.querySelector('.joystick').style.display = 'block';
+                $("#canvas *").attr("disabled", "disabled").off('click');
+
+                document.querySelector('.sliderbutton').style.display = 'none';
+            } else {
+                document.querySelector('.joystick').style.display = 'none';
+                document.querySelector('.sliderbutton').style.display = 'block';
+            }
+            flag_slider = !flag_slider;
         }
 
     </script>
