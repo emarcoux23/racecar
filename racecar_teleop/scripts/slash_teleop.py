@@ -23,8 +23,8 @@ class teleop(object):
         # Always create subscribers last
         self.sub_joy   = rospy.Subscriber("joy", Joy , self.joy_callback , queue_size=1)
 
-    ####################################### 
-        
+    #######################################
+
     def joy_callback( self, joy_msg ):
         """ """
         min_axes = 5 if self.ps4 else 4
@@ -44,7 +44,6 @@ class teleop(object):
         # Software deadman switch
         #If left button is active 
         if (joy_msg.buttons[4]):
-            
             #No button pressed (see below)
             # Closed-loop velocity, Open-loop steering, control mode = 0
             
