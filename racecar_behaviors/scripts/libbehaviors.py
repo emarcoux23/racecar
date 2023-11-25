@@ -31,12 +31,40 @@ def multiply_transforms(trans1, rot1, trans2, rot2):
 def brushfire(occupancyGrid):
     mapOfWorld = np.zeros(occupancyGrid.shape, dtype=int)
     
-    mapOfWorld[occupancyGrid==100] = 1 # obstacles
-    mapOfWorld[occupancyGrid==-1] = 1  # unknowns
+    mapOfWorld[occupancyGrid==100] = -1 # obstacles
+    mapOfWorld[occupancyGrid==-1] = -2  # unknowns
     
+    a = -1
+    changed = True
     # do brushfire algorithm here
-    
+    while(changed):
+        changed = False
+        for y in range(1, mapOfWorld.shape[0]-1):
+            for x in range(1, mapOfWorld.shape[1]-1):
+                if mapOfWorld[y, x] == 0:
+                    if mapOfWorld[y-1, x] == a or mapOfWorld[y+1, x] == a or mapOfWorld[y, x-1] == a or mapOfWorld[y, x+1] == a:
+                        if a == -1:
+                            mapOfWorld[y, x] = 1
+                        else:
+                            mapOfWorld[y, x] = a + 1
+                        changed = True
+
+        if a == -1:
+            a = 1
+        else:
+            a += 1
+
+    '''if(irow > 0):
+        if (mapOfWorld[irow-1][icol] == 0): mapOfWorld[irw-1][icol] = a+1
+    if(irow > nRows-1):
+        if (mapOfWorld[irow+1][icol] == 0): mapOfWorld[irow+1][icol] = a+1
+    if(irow > 0):
+        if (mapOfWorld[irow][icol-1] == 0): mapOfWorld[irw-1][icol] = a+1
+    if(irow > nCols-1):
+        if (mapOfWorld[irow][icol+1] == 0): mapOfWorld[irow+1][icol] = a+1
+    '''
+
+
     # brushfire: -1 = obstacle or unknown, safer cells have higher value)
     return mapOfWorld
-    
 

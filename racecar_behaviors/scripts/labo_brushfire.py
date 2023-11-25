@@ -25,6 +25,7 @@ def main():
     # Export brusfire map for visualization
     # Adjust color: 0 (black) = obstacle, 10-255 (white) = safest cells
     maximum = np.amax(brushfireMap)
+    rospy.logerr(maximum)
     if maximum > 1:
         mask = brushfireMap==1; 
         brushfireMap = brushfireMap.astype(float) / float(maximum) *225.0 + 30.0
