@@ -1,7 +1,6 @@
 #!/usr/bin/env python
 
 import rospy
-import cv2
 import tf
 import numpy as np
 from tf.transformations import euler_from_quaternion
@@ -54,17 +53,5 @@ def brushfire(occupancyGrid):
         else:
             a += 1
 
-    '''if(irow > 0):
-        if (mapOfWorld[irow-1][icol] == 0): mapOfWorld[irw-1][icol] = a+1
-    if(irow > nRows-1):
-        if (mapOfWorld[irow+1][icol] == 0): mapOfWorld[irow+1][icol] = a+1
-    if(irow > 0):
-        if (mapOfWorld[irow][icol-1] == 0): mapOfWorld[irw-1][icol] = a+1
-    if(irow > nCols-1):
-        if (mapOfWorld[irow][icol+1] == 0): mapOfWorld[irow+1][icol] = a+1
-    '''
-
-
     # brushfire: -1 = obstacle or unknown, safer cells have higher value)
     return mapOfWorld
-
