@@ -24,13 +24,14 @@
     </node>
     <!-- blob_detector -->
     <node pkg="racecar_behaviors" type="blob_detector.py" name="blob_detector" output="screen">
+       <remap from="cmd_vel"     to="cmd_vel_abtr_2"/>
        <remap from="image"       to="raspicam_node/image"/>
        <remap from="camera_info" to="raspicam_node/camera_info"/>
        <remap from="depth"       to="raspicam_node/depth_registered"/>
        <param name="map_frame_id"    value="$(arg prefix)/$(arg fixed_frame_id)"/>
        <param name="frame_id"        value="$(arg prefix)/base_footprint"/>
        <param name="object_frame_id" value="$(arg prefix)/object"/>
-       <param name="color_hue"       value="10"/>
+       <param name="color_hue"       value="120"/>
     </node>
         
     <!-- used to debug camera vs scan registration -->

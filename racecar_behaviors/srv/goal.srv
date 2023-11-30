@@ -1,0 +1,12 @@
+int8 FINAL = 0
+int8 INTER = 1
+int8 BLOB = 2
+int8 CLEAR = 3
+int8 SKIP = 4
+
+float32 posX
+float32 posY
+float32 theta_deg
+int8    type
+---
+bool success

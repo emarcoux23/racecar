@@ -12,17 +12,40 @@ from std_msgs.msg import String, ColorRGBA
 from sensor_msgs.msg import Image, CameraInfo
 from geometry_msgs.msg import Pose, Quaternion
 from cv_bridge import CvBridge, CvBridgeError
+from racecar_behaviors.srv import goal, goalRequest, goalResponse
 from tf.transformations import euler_from_quaternion
 from libbehaviors import *
+from geometry_msgs.msg import Twist
+from nav_msgs.msg import Odometry
+
+def is_in_range(point, point_list, range_value):
+    for p in point_list:
+        if all(abs(p[i] - point[i]) <= range_value for i in range(len(point))):
+            return True
+    return False
+
+def quaternion_to_yaw(w, x, y, z):
+    # Calculate yaw (rotation around the vertical axis)
+    yaw_rad = np.arctan2(2 * (w * z + x * y), 1 - 2 * (y**2 + z**2))
+    yaw_deg = np.degrees(yaw_rad)
+    return yaw_deg
 
 class BlobDetector:
     def __init__(self):
+        self.blob_array: list = [(0,0)]
+        self.blob_pos_x = 0.0
+        self.blob_pos_y = 0.0
+        self.distance = 0.0
+        self.angle = 0.0
+        self.flagSent = False
+        self.robotPosition = Odometry()
+
         self.bridge = CvBridge()
         self.map_frame_id = rospy.get_param('~map_frame_id', 'map')
         self.frame_id = rospy.get_param('~frame_id', 'base_link')
         self.object_frame_id = rospy.get_param('~object_frame_id', 'object')
-        self.color_hue = rospy.get_param('~color_hue', 10) # 160=purple, 100=blue, 10=Orange
-        self.color_range = rospy.get_param('~color_range', 15) 
+        self.color_hue = rospy.get_param('~color_hue', 120) # 160=purple, 100=blue, 10=Orange
+        self.color_range = rospy.get_param('~color_range', 10) 
         self.color_saturation = rospy.get_param('~color_saturation', 50) 
         self.color_value = rospy.get_param('~color_value', 50) 
         self.border = rospy.get_param('~border', 10) 
@@ -66,13 +89,18 @@ class BlobDetector:
         
         self.image_pub = rospy.Publisher('image_detections', Image, queue_size=1)
         self.object_pub = rospy.Publisher('object_detected', String, queue_size=1)
-        
+        self.cmd_vel_pub = rospy.Publisher('cmd_vel', Twist, queue_size=1)
+        self.subOdom = rospy.Subscriber('/racecar/odometry/corrected', Odometry, self.odomCallback, queue_size=1)
+
         self.image_sub = message_filters.Subscriber('image', Image)
         self.depth_sub = message_filters.Subscriber('depth', Image)
         self.info_sub = message_filters.Subscriber('camera_info', CameraInfo)
         self.ts = message_filters.TimeSynchronizer([self.image_sub, self.depth_sub, self.info_sub], 10)
         self.ts.registerCallback(self.image_callback)
-        
+    
+    def odomCallback(self, odom: Odometry):
+        self.robotPosition = odom
+
     def config_callback(self, config, level):
         rospy.loginfo("""Reconfigure Request: {color_hue}, {color_saturation}, {color_value}, {color_range}, {border}""".format(**config))
         self.color_hue = config.color_hue
@@ -110,7 +138,7 @@ class BlobDetector:
                     info_D = np.array(info.D)
                     info_P = np.array(info.P).reshape([3, 4])
                     pts_uv = cv2.undistortPoints(pts_uv, info_K, info_D, info_P)
-                    angle = np.arcsin(-pts_uv[0][0][0]) # negative to get angle from forward x axis
+                    self.angle = np.arcsin(-pts_uv[0][0][0]) # negative to get angle from forward x axis
                     x = pts_uv[0][0][0]
                     y = pts_uv[0][0][1]
                     #rospy.loginfo("(%d/%d) %f %f -> %f %f angle=%f deg", i+1, len(keypoints), keypoints[i].pt[0], keypoints[i].pt[1], x, y, angle*180/np.pi)
@@ -145,6 +173,7 @@ class BlobDetector:
                     image.header.frame_id)  
             msg = String()
             msg.data = self.object_frame_id
+            # rospy.loginfo("allo je suis ici")
             self.object_pub.publish(msg) # signal that an object has been detected
             
             # Compute object pose in map frame
@@ -165,10 +194,64 @@ class BlobDetector:
                 return
             (transBase, rotBase) = multiply_transforms(transBase, rotBase, transObj, rotObj)
             
-            distance = np.linalg.norm(transBase[0:2])
-            angle = np.arcsin(transBase[1]/transBase[0])
+            self.distance = np.linalg.norm(transBase[0:2])
+            self.angle = np.arcsin(transBase[1]/transBase[0])
             
-            rospy.loginfo("Object detected at [%f,%f] in %s frame! Distance and direction from robot: %fm %fdeg.", transMap[0], transMap[1], self.map_frame_id, distance, angle*180.0/np.pi)
+            # rospy.loginfo("Object detected at [%f,%f] in %s frame! Distance and direction from robot: %fm %fdeg.", transMap[0], transMap[1], self.map_frame_id, self.distance, self.angle*180.0/np.pi)
+            self.object_pub.publish(str(self.distance) + ", " + str(self.angle*180.0/np.pi))
+
+            self.blob_pos_x = transMap[0]
+            self.blob_pos_y = transMap[1]
+
+        distanceToStop = 1.5
+        distanceMove = 3
+
+        if (self.blob_pos_x != None and self.blob_pos_y != None and self.distance != None and self.angle != None):
+            if not is_in_range((self.blob_pos_x, self.blob_pos_y), self.blob_array, 2.0):
+                if self.distance > distanceMove:
+                    if not self.flagSent:
+                        rospy.wait_for_service('/pertiglance/goal')
+
+                        try:
+                            rospy.logwarn("Object detected sending goal")
+                            srv = rospy.ServiceProxy('/pertiglance/goal', goal)
+                            posRobotFrameX = self.robotPosition.pose.pose.position.x
+                            posRobotFrameY = self.robotPosition.pose.pose.position.y
+
+                            angleRobotFrame = quaternion_to_yaw(self.robotPosition.pose.pose.orientation.w,
+                                                                self.robotPosition.pose.pose.orientation.x,
+                                                                self.robotPosition.pose.pose.orientation.y,
+                                                                self.robotPosition.pose.pose.orientation.z)
+
+                            # angleFrame = np.atan(self.blob_pos_y/self.blob_pos_x) - self.angle
+                            srv(posX= self.blob_pos_x, posY= self.blob_pos_y, theta_deg= angleRobotFrame - np.degrees(self.angle), type= 2)
+                            self.flagSent = True
+                        except e:
+                            rospy.logerr(e)
+
+                elif self.distance > distanceToStop:
+                    twist = Twist()
+                    twist.angular.z = 2*self.angle
+                    twist.linear.x = 1
+                    # rospy.logwarn(twist)
+                    self.cmd_vel_pub.publish(twist)
+
+                elif self.distance < distanceToStop:
+                    time = rospy.get_time()
+                    while rospy.get_time() - time < 5:
+                        self.cmd_vel_pub.publish(Twist())
+                    
+                    self.blob_array.append((self.blob_pos_x, self.blob_pos_y))
+                    self.flagSent = False
+
+                    rospy.wait_for_service('/pertiglance/goal')
+
+                    try:
+                        srv = rospy.ServiceProxy('/pertiglance/goal', goal)
+                        srv(posX= 0, posY= 0, theta_deg= 0, type= 4)
+                    except e:
+                        rospy.logerr(e)
+
 
         # debugging topic
         if self.image_pub.get_num_connections()>0:
