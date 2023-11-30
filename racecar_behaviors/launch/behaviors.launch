@@ -25,10 +25,14 @@
        <remap from="odom"    to="odometry/filtered"/>
     </node>  
     
-    <node pkg="racecar_behaviors" type="obstacle_detector.py" name="obstacle_detector" output="screen">
+    <node pkg="racecar_behaviors" type="obstacle_detector.py" name="obstacle_detector">
        <remap from="cmd_vel" to="cmd_vel_abtr_1"/>
        <remap from="scan"    to="scan"/>
     </node>    
+
+    <node pkg="racecar_behaviors" type="odom_correction.py" name="odom_correction" output="screen">
+      
+    </node>
             
   </group>
 
