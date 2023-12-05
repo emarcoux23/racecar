@@ -25,12 +25,12 @@
   </include>
 
   <group ns="$(arg prefix)">
-  
+    
     <!-- optional sensor fusion -->
     <include if="$(arg odom_fusion)" file="$(find racecar_bringup)/launch/includes/robot_localization.launch.xml">
       <arg name="prefix" value="$(arg prefix)"/>
     </include>
-  
+    
     <!-- Arbitration node for twists coming from the joystick and the web client-->
     <node pkg="racecar_bringup" type="cmd_vel_arbitration.py" name="cmd_vel_arbitration">     
       <remap from="cmd_vel_output" to="cmd_vel"/>
@@ -42,7 +42,7 @@
       <param name="autorepeat_rate"   value="5"/>
       <param name="coalesce_interval" value="0.01"/>
     </node>
-
+    
     <node pkg="racecar_teleop" type="slash_teleop.py" name="teleop">
       <remap from="ctl_ref" to="cmd_vel_abtr_0"/> <!-- Highest priority -->
       <param name="ps4"       value="$(arg joy_ps4)"/>
@@ -53,7 +53,7 @@
     <node pkg="racecar_autopilot" type="slash_controller.py" name="controller" output="screen">
       <remap from="ctl_ref" to="cmd_vel"/> 
     </node>
-
+    
   </group>
 
 </launch>

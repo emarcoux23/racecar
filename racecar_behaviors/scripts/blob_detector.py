@@ -18,6 +18,7 @@ from libbehaviors import *
 from geometry_msgs.msg import Twist
 from nav_msgs.msg import Odometry
 
+
 def is_in_range(point, point_list, range_value):
     for p in point_list:
         if all(abs(p[i] - point[i]) <= range_value for i in range(len(point))):
@@ -39,6 +40,8 @@ class BlobDetector:
         self.angle = 0.0
         self.flagSent = False
         self.robotPosition = Odometry()
+        
+        self.f = open("/home/racecar/catkin_ws/src/racecar/coordonnees.txt", "w")
 
         self.bridge = CvBridge()
         self.map_frame_id = rospy.get_param('~map_frame_id', 'map')
@@ -226,13 +229,17 @@ class BlobDetector:
                             # angleFrame = np.atan(self.blob_pos_y/self.blob_pos_x) - self.angle
                             srv(posX= self.blob_pos_x, posY= self.blob_pos_y, theta_deg= angleRobotFrame - np.degrees(self.angle), type= 2)
                             self.flagSent = True
+                            
+                            self.filename = "Photo_debris_" + self.blob_array.size() + "_trajet_1.png"
+                            self.f.write("Blob_" + self.blob_array.size() + " at: (" + self.blob_pos_x + ":" + self.blob_pos_y + "). Saved under: " + self.filename)
+                            
                         except e:
                             rospy.logerr(e)
 
                 elif self.distance > distanceToStop:
                     twist = Twist()
                     twist.angular.z = 2*self.angle
-                    twist.linear.x = 1
+                    twist.linear.x = 0.25
                     # rospy.logwarn(twist)
                     self.cmd_vel_pub.publish(twist)
 
@@ -243,15 +250,24 @@ class BlobDetector:
                     
                     self.blob_array.append((self.blob_pos_x, self.blob_pos_y))
                     self.flagSent = False
-
+                    self.cmd_vel_pub.publish(Twist())
                     rospy.wait_for_service('/pertiglance/goal')
-
+                    self.cmd_vel_pub.publish(Twist())
+                    
                     try:
+                        self.cmd_vel_pub.publish(Twist())
                         srv = rospy.ServiceProxy('/pertiglance/goal', goal)
                         srv(posX= 0, posY= 0, theta_deg= 0, type= 4)
-                    except e:
-                        rospy.logerr(e)
-
+                    except :
+                        rospy.logerr("Some erreur")
+                        
+                    try:
+                        img: Image = rospy.wait_for_message("/racecar/raspicam_node/image", Image, rospy.Duration(1))
+                        cv_image = self.bridge.imgmsg_to_cv2(img, "bgr8")
+                        cv2.imwrite("/home/racecar/catkin_ws/src/racecar/" + self.filename, cv_image)
+                        
+                    except:
+                        rospy.logerr("Some erreur :'(")
 
         # debugging topic
         if self.image_pub.get_num_connections()>0:

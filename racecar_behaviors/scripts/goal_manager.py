@@ -11,7 +11,6 @@ from nav_msgs.msg import Odometry
 from nav_msgs.srv import GetMap
 from libbehaviors import *
 from geometry_msgs.msg import Point
-import matplotlib.pyplot as plt
 import math as m
 from move_base_msgs.msg import MoveBaseActionGoal
 from racecar_behaviors.srv import goal, goalRequest, goalResponse
